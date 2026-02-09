@@ -13,6 +13,8 @@ export interface PlumiseConfig {
   heartbeatIntervalMs: number;
   /** Chain ID (default: 8881217) */
   chainId: number;
+  /** Plumise Inference API gateway URL (default: http://localhost:3200) */
+  inferenceApiUrl: string;
 }
 
 export function loadConfig(): PlumiseConfig {
@@ -42,10 +44,14 @@ export function loadConfig(): PlumiseConfig {
     10
   );
 
+  const inferenceApiUrl =
+    process.env.PLUMISE_INFERENCE_API_URL || "http://localhost:3200";
+
   return {
     nodeUrl,
     privateKey,
     heartbeatIntervalMs,
     chainId,
+    inferenceApiUrl,
   };
 }

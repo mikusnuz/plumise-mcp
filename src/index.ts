@@ -23,6 +23,7 @@ import { RpcClient } from "./services/rpc-client.js";
 import { HeartbeatService } from "./services/heartbeat.js";
 import { registerNodeTools } from "./tools/node.js";
 import { registerWalletTools } from "./tools/wallet.js";
+import { registerInferenceTools } from "./tools/inference.js";
 import { registerWalletResource } from "./resources/wallet.js";
 import { registerNodeResource } from "./resources/node.js";
 import { registerNetworkResource } from "./resources/network.js";
@@ -61,6 +62,7 @@ async function main(): Promise<void> {
   // Register tools
   registerNodeTools(server, rpcClient, wallet, heartbeat);
   registerWalletTools(server, rpcClient, wallet, config);
+  registerInferenceTools(server, rpcClient, wallet, config);
 
   // Register resources
   registerWalletResource(server, rpcClient, wallet);
