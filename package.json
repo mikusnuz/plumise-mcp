@@ -1,0 +1,39 @@
+{
+  "name": "plumise-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Plumise AI-native blockchain agent_* RPC namespace",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "commonjs",
+  "bin": {
+    "plumise-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "plumise",
+    "blockchain",
+    "agent",
+    "ai"
+  ],
+  "author": "plumbug",
+  "license": "MIT",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
