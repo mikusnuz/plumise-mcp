@@ -49,7 +49,13 @@ const REWARD_POOL_ABI = [
 ];
 
 // RewardPool contract address on Plumise chain (deployed for inference rewards)
-const REWARD_POOL_ADDRESS = "0x0000000000000000000000000000000000000100";
+// Override via PLUMISE_REWARD_POOL_ADDRESS environment variable
+const REWARD_POOL_ADDRESS =
+  process.env.PLUMISE_REWARD_POOL_ADDRESS ||
+  "0x0000000000000000000000000000000000000100";
+
+/** Default HTTP request timeout in milliseconds */
+const FETCH_TIMEOUT_MS = 30_000;
 
 // ─── HTTP Helpers ───────────────────────────────────────────────────
 
@@ -60,10 +66,14 @@ async function apiRequest(
     method?: string;
     body?: unknown;
     headers?: Record<string, string>;
+    timeoutMs?: number;
   } = {}
 ): Promise<unknown> {
   const url = `${baseUrl.replace(/\/$/, "")}${path}`;
-  const { method = "GET", body, headers = {} } = options;
+  const { method = "GET", body, headers = {}, timeoutMs = FETCH_TIMEOUT_MS } = options;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const fetchOptions: RequestInit = {
     method,
@@ -71,13 +81,27 @@ async function apiRequest(
       "Content-Type": "application/json",
       ...headers,
     },
+    signal: controller.signal,
   };
 
   if (body !== undefined) {
     fetchOptions.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url, fetchOptions);
+  let response: Response;
+  try {
+    response = await fetch(url, fetchOptions);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `API request timed out after ${timeoutMs}ms: ${method} ${path}`
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "Unknown error");
@@ -275,6 +299,18 @@ export async function handleAgentRewards(
     // Validate address
     if (!ethers.isAddress(targetAddress)) {
       return makeErrorResult(`Invalid address: ${targetAddress}`);
+    }
+
+    // Validate provider URL
+    try {
+      const parsed = new URL(config.rpcUrl);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        return makeErrorResult(
+          `Invalid RPC URL protocol: ${parsed.protocol}. Only http/https supported.`
+        );
+      }
+    } catch {
+      return makeErrorResult(`Invalid RPC URL: ${config.rpcUrl}`);
     }
 
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);

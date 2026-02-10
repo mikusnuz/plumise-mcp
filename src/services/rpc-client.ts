@@ -71,9 +71,23 @@ export interface SolutionResult {
 export class RpcClient {
   private nodeUrl: string;
   private requestId: number = 0;
+  private timeoutMs: number;
 
-  constructor(nodeUrl: string) {
+  constructor(nodeUrl: string, timeoutMs: number = 30_000) {
+    // Validate URL format
+    try {
+      const parsed = new URL(nodeUrl);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error(`Unsupported protocol: ${parsed.protocol}`);
+      }
+    } catch (e) {
+      throw new Error(
+        `Invalid node URL "${nodeUrl}": ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+
     this.nodeUrl = nodeUrl;
+    this.timeoutMs = timeoutMs;
   }
 
   /**
@@ -88,11 +102,28 @@ export class RpcClient {
       params,
     });
 
-    const response = await fetch(this.nodeUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(this.nodeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          `RPC request timed out after ${this.timeoutMs}ms: ${method}`
+        );
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(

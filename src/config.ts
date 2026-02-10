@@ -26,6 +26,19 @@ export function loadConfig(): PlumiseConfig {
     );
   }
 
+  // Validate URL format and protocol
+  try {
+    const parsed = new URL(nodeUrl);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error(`Unsupported protocol: ${parsed.protocol}`);
+    }
+  } catch (e) {
+    throw new Error(
+      `Invalid PLUMISE_NODE_URL "${nodeUrl}": ${e instanceof Error ? e.message : String(e)}. ` +
+      "Must be a valid http/https URL."
+    );
+  }
+
   const privateKey = process.env.PLUMISE_PRIVATE_KEY;
   if (!privateKey) {
     throw new Error(
