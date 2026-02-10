@@ -5,7 +5,11 @@ MCP (Model Context Protocol) server for the Plumise AI-native blockchain. Wraps 
 ## Installation
 
 ```bash
-npm install plumise-mcp
+# Run directly with npx (no install needed)
+npx plumise-mcp
+
+# Or install globally
+npm install -g plumise-mcp
 ```
 
 ## Configuration
@@ -18,6 +22,7 @@ Set environment variables:
 | `PLUMISE_PRIVATE_KEY` | Yes | - | Agent wallet private key (hex) |
 | `PLUMISE_HEARTBEAT_INTERVAL_MS` | No | `60000` | Heartbeat interval in ms |
 | `PLUMISE_CHAIN_ID` | No | `8881217` | Chain ID |
+| `PLUMISE_INFERENCE_API_URL` | No | `http://localhost:3200` | Inference API gateway URL |
 
 ## Usage
 
@@ -67,6 +72,15 @@ Add to `claude_desktop_config.json`:
 | `transfer` | Send PLM to another address |
 | `claim_reward` | Claim accumulated agent rewards |
 | `pending_reward` | Check unclaimed reward balance |
+
+### Inference Tools
+
+| Tool | Description |
+|---|---|
+| `serve_model` | Register as an inference node serving a specific AI model |
+| `inference` | Run AI inference through the distributed Plumise network |
+| `model_status` | Check model availability and node status across the network |
+| `agent_rewards` | Check pending inference rewards, claim them, or view history |
 
 ## MCP Resources
 

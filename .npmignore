@@ -1,0 +1,23 @@
+# Source (dist only via files field)
+src/
+tsconfig.json
+*.tsbuildinfo
+
+# Environment
+.env
+.env.example
+.env.*
+
+# Dev config
+.gitignore
+.github/
+.claude/
+
+# Node
+node_modules/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

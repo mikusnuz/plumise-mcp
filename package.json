@@ -24,6 +24,17 @@
   ],
   "author": "plumbug",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikusnuz/plumise-mcp.git"
+  },
+  "homepage": "https://github.com/mikusnuz/plumise-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/mikusnuz/plumise-mcp/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "dist/**/*"
   ],
