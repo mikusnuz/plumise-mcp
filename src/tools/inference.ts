@@ -9,7 +9,7 @@
  */
 
 import { z } from "zod";
-import { ethers } from "ethers";
+import type { PrivateKeyAccount } from "viem/accounts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import type { PlumiseConfig } from "../config.js";
@@ -29,7 +29,7 @@ export interface InferenceConfig {
 export function registerInferenceTools(
   server: McpServer,
   rpcClient: RpcClient,
-  wallet: ethers.Wallet,
+  account: PrivateKeyAccount,
   config: PlumiseConfig
 ): void {
   const inferenceConfig: InferenceConfig = {
@@ -67,7 +67,7 @@ export function registerInferenceTools(
       return handleServeModel(
         { model, endpoint, capacity },
         inferenceConfig,
-        wallet
+        account
       );
     }
   );
@@ -111,7 +111,7 @@ export function registerInferenceTools(
       return handleInference(
         { model, prompt, max_tokens, temperature, stream },
         inferenceConfig,
-        wallet
+        account
       );
     }
   );
@@ -160,7 +160,7 @@ export function registerInferenceTools(
       return handleAgentRewards(
         { action, agent_address },
         inferenceConfig,
-        wallet
+        account
       );
     }
   );

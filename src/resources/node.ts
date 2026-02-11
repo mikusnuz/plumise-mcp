@@ -5,7 +5,7 @@
  * the current agent node status including heartbeat info.
  */
 
-import { ethers } from "ethers";
+import type { PrivateKeyAccount } from "viem/accounts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import { HeartbeatService } from "../services/heartbeat.js";
@@ -13,7 +13,7 @@ import { HeartbeatService } from "../services/heartbeat.js";
 export function registerNodeResource(
   server: McpServer,
   rpcClient: RpcClient,
-  wallet: ethers.Wallet,
+  account: PrivateKeyAccount,
   heartbeat: HeartbeatService
 ): void {
   server.resource(
@@ -27,7 +27,7 @@ export function registerNodeResource(
     },
     async () => {
       try {
-        const status = await rpcClient.agentGetStatus(wallet.address);
+        const status = await rpcClient.agentGetStatus(account.address);
 
         return {
           contents: [
@@ -37,7 +37,7 @@ export function registerNodeResource(
               text: JSON.stringify(
                 {
                   agent: {
-                    address: wallet.address,
+                    address: account.address,
                     registered: status.registered,
                     uptime: status.uptime,
                     lastHeartbeat: status.lastHeartbeat,
@@ -68,7 +68,7 @@ export function registerNodeResource(
               text: JSON.stringify(
                 {
                   agent: {
-                    address: wallet.address,
+                    address: account.address,
                     registered: false,
                     error: msg,
                   },

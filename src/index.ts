@@ -16,7 +16,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ethers } from "ethers";
+import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 
 import { loadConfig } from "./config.js";
 import { RpcClient } from "./services/rpc-client.js";
@@ -32,8 +32,11 @@ async function main(): Promise<void> {
   // Load configuration from environment
   const config = loadConfig();
 
-  // Create wallet from private key
-  const wallet = new ethers.Wallet(config.privateKey);
+  // Create account from private key
+  const privateKey = config.privateKey.startsWith("0x")
+    ? config.privateKey
+    : `0x${config.privateKey}`;
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
 
   // Create RPC client
   const rpcClient = new RpcClient(config.nodeUrl);
@@ -41,7 +44,7 @@ async function main(): Promise<void> {
   // Create heartbeat service
   const heartbeat = new HeartbeatService(
     rpcClient,
-    wallet,
+    account,
     config.heartbeatIntervalMs
   );
 
@@ -60,13 +63,13 @@ async function main(): Promise<void> {
   );
 
   // Register tools
-  registerNodeTools(server, rpcClient, wallet, heartbeat);
-  registerWalletTools(server, rpcClient, wallet, config);
-  registerInferenceTools(server, rpcClient, wallet, config);
+  registerNodeTools(server, rpcClient, account, heartbeat);
+  registerWalletTools(server, rpcClient, account, config);
+  registerInferenceTools(server, rpcClient, account, config);
 
   // Register resources
-  registerWalletResource(server, rpcClient, wallet);
-  registerNodeResource(server, rpcClient, wallet, heartbeat);
+  registerWalletResource(server, rpcClient, account);
+  registerNodeResource(server, rpcClient, account, heartbeat);
   registerNetworkResource(server, rpcClient, config);
 
   // Connect via stdio transport
@@ -84,7 +87,7 @@ async function main(): Promise<void> {
   process.on("SIGTERM", shutdown);
 
   console.error(
-    `[plumise-mcp] Server started. Agent address: ${wallet.address}`
+    `[plumise-mcp] Server started. Agent address: ${account.address}`
   );
 }
 

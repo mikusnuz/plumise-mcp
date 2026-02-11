@@ -5,12 +5,12 @@
  * and alive on the Plumise network.
  */
 
-import { ethers } from "ethers";
+import type { PrivateKeyAccount } from "viem/accounts";
 import { RpcClient } from "./rpc-client.js";
 
 export class HeartbeatService {
   private rpcClient: RpcClient;
-  private wallet: ethers.Wallet;
+  private account: PrivateKeyAccount;
   private intervalMs: number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private _isRunning: boolean = false;
@@ -18,9 +18,9 @@ export class HeartbeatService {
   private _heartbeatCount: number = 0;
   private _lastError: string | null = null;
 
-  constructor(rpcClient: RpcClient, wallet: ethers.Wallet, intervalMs: number) {
+  constructor(rpcClient: RpcClient, account: PrivateKeyAccount, intervalMs: number) {
     this.rpcClient = rpcClient;
-    this.wallet = wallet;
+    this.account = account;
     this.intervalMs = intervalMs;
   }
 
@@ -78,10 +78,10 @@ export class HeartbeatService {
   private async sendHeartbeat(): Promise<void> {
     try {
       const timestamp = Math.floor(Date.now() / 1000);
-      const message = `heartbeat:${this.wallet.address}:${timestamp}`;
-      const signature = await this.wallet.signMessage(message);
+      const message = `heartbeat:${this.account.address}:${timestamp}`;
+      const signature = await this.account.signMessage({ message });
 
-      await this.rpcClient.agentHeartbeat(this.wallet.address, signature);
+      await this.rpcClient.agentHeartbeat(this.account.address, signature);
 
       this._lastHeartbeat = new Date();
       this._heartbeatCount++;

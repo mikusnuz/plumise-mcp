@@ -9,7 +9,8 @@
  */
 
 import { z } from "zod";
-import { ethers } from "ethers";
+import { keccak256, toBytes } from "viem";
+import type { PrivateKeyAccount } from "viem/accounts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import { HeartbeatService } from "../services/heartbeat.js";
@@ -17,7 +18,7 @@ import { HeartbeatService } from "../services/heartbeat.js";
 export function registerNodeTools(
   server: McpServer,
   rpcClient: RpcClient,
-  wallet: ethers.Wallet,
+  account: PrivateKeyAccount,
   heartbeat: HeartbeatService
 ): void {
   // ─── start_node ────────────────────────────────────────────────
@@ -31,12 +32,12 @@ export function registerNodeTools(
       try {
         // Sign registration message
         const timestamp = Math.floor(Date.now() / 1000);
-        const message = `register:${wallet.address}:${timestamp}`;
-        const signature = await wallet.signMessage(message);
+        const message = `register:${account.address}:${timestamp}`;
+        const signature = await account.signMessage({ message });
 
         // Register with the network
         const result = await rpcClient.agentRegister(
-          wallet.address,
+          account.address,
           signature
         );
 
@@ -51,7 +52,7 @@ export function registerNodeTools(
                 {
                   status: "started",
                   agentId: result.agentId,
-                  address: wallet.address,
+                  address: account.address,
                   heartbeatRunning: heartbeat.isRunning,
                   message: result.message,
                 },
@@ -89,7 +90,7 @@ export function registerNodeTools(
               text: JSON.stringify(
                 {
                   status: "stopped",
-                  address: wallet.address,
+                  address: account.address,
                   heartbeatRunning: heartbeat.isRunning,
                   totalHeartbeats: heartbeat.heartbeatCount,
                 },
@@ -118,7 +119,7 @@ export function registerNodeTools(
     {},
     async () => {
       try {
-        const status = await rpcClient.agentGetStatus(wallet.address);
+        const status = await rpcClient.agentGetStatus(account.address);
 
         return {
           content: [
@@ -161,7 +162,7 @@ export function registerNodeTools(
     async () => {
       try {
         // Get current challenge
-        const challenge = await rpcClient.agentGetChallenge(wallet.address);
+        const challenge = await rpcClient.agentGetChallenge(account.address);
 
         if (!challenge || !challenge.id) {
           return {
@@ -220,11 +221,11 @@ export function registerNodeTools(
         }
 
         // Sign and submit solution
-        const submitMessage = `solution:${wallet.address}:${challenge.id}:${solution}`;
-        const signature = await wallet.signMessage(submitMessage);
+        const submitMessage = `solution:${account.address}:${challenge.id}:${solution}`;
+        const signature = await account.signMessage({ message: submitMessage });
 
         const result = await rpcClient.agentSubmitSolution(
-          wallet.address,
+          account.address,
           challenge.id,
           solution,
           signature
@@ -271,7 +272,7 @@ const MAX_ITERATIONS = 1_000_000;
 function solveChallenge(data: string, difficulty: number): string | null {
   for (let nonce = 0; nonce < MAX_ITERATIONS; nonce++) {
     const input = data + nonce.toString(16).padStart(8, "0");
-    const hash = ethers.keccak256(ethers.toUtf8Bytes(input));
+    const hash = keccak256(toBytes(input));
 
     if (hasLeadingZeroBits(hash, difficulty)) {
       return nonce.toString(16).padStart(8, "0");

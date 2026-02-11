@@ -9,7 +9,9 @@
  */
 
 import { z } from "zod";
-import { ethers } from "ethers";
+import { isAddress, parseEther, serializeTransaction, type Address } from "viem";
+import type { PrivateKeyAccount } from "viem/accounts";
+import { formatPLM } from "@plumise/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import type { PlumiseConfig } from "../config.js";
@@ -17,7 +19,7 @@ import type { PlumiseConfig } from "../config.js";
 export function registerWalletTools(
   server: McpServer,
   rpcClient: RpcClient,
-  wallet: ethers.Wallet,
+  account: PrivateKeyAccount,
   config: PlumiseConfig
 ): void {
   // ─── check_balance ─────────────────────────────────────────────
@@ -36,10 +38,10 @@ export function registerWalletTools(
     },
     async ({ address }) => {
       try {
-        const targetAddress = address || wallet.address;
+        const targetAddress = address || account.address;
 
         // Validate address format
-        if (!ethers.isAddress(targetAddress)) {
+        if (!isAddress(targetAddress)) {
           return {
             content: [
               {
@@ -53,7 +55,7 @@ export function registerWalletTools(
 
         const balanceHex = await rpcClient.getBalance(targetAddress);
         const balanceWei = BigInt(balanceHex);
-        const balancePlm = ethers.formatEther(balanceWei);
+        const balancePlm = formatPLM(balanceWei);
 
         return {
           content: [
@@ -101,7 +103,7 @@ export function registerWalletTools(
     async ({ to, amount }) => {
       try {
         // Validate recipient address
-        if (!ethers.isAddress(to)) {
+        if (!isAddress(to)) {
           return {
             content: [
               { type: "text" as const, text: `Invalid recipient address: ${to}` },
@@ -113,7 +115,7 @@ export function registerWalletTools(
         // Parse amount
         let valueWei: bigint;
         try {
-          valueWei = ethers.parseEther(amount);
+          valueWei = parseEther(amount);
         } catch {
           return {
             content: [
@@ -136,25 +138,24 @@ export function registerWalletTools(
         }
 
         // Get nonce and gas price
-        const nonceHex = await rpcClient.getTransactionCount(wallet.address);
+        const nonceHex = await rpcClient.getTransactionCount(account.address);
         const gasPriceHex = await rpcClient.getGasPrice();
 
         const nonce = parseInt(nonceHex, 16);
         const gasPrice = BigInt(gasPriceHex);
 
-        // Build transaction
-        const tx: ethers.TransactionLike = {
-          to,
+        // Build and sign transaction
+        const tx = {
+          to: to as Address,
           value: valueWei,
           nonce,
-          gasLimit: 21000n,
+          gas: 21000n,
           gasPrice,
           chainId: config.chainId,
-          type: 0, // legacy transaction
+          type: "legacy" as const,
         };
 
-        // Sign and send
-        const signedTx = await wallet.signTransaction(tx);
+        const signedTx = await account.signTransaction(tx);
         const txHash = await rpcClient.sendRawTransaction(signedTx);
 
         return {
@@ -165,7 +166,7 @@ export function registerWalletTools(
                 {
                   status: "sent",
                   txHash,
-                  from: wallet.address,
+                  from: account.address,
                   to,
                   amount,
                   unit: "PLM",
@@ -200,11 +201,11 @@ export function registerWalletTools(
     async () => {
       try {
         const timestamp = Math.floor(Date.now() / 1000);
-        const message = `claim:${wallet.address}:${timestamp}`;
-        const signature = await wallet.signMessage(message);
+        const message = `claim:${account.address}:${timestamp}`;
+        const signature = await account.signMessage({ message });
 
         const result = await rpcClient.agentClaimReward(
-          wallet.address,
+          account.address,
           signature
         );
 
@@ -216,7 +217,7 @@ export function registerWalletTools(
                 {
                   status: "claimed",
                   txHash: result.txHash,
-                  amount: ethers.formatEther(BigInt(result.amount)),
+                  amount: formatPLM(BigInt(result.amount)),
                   unit: "PLM",
                   amountWei: result.amount,
                 },
@@ -247,7 +248,7 @@ export function registerWalletTools(
     {},
     async () => {
       try {
-        const reward = await rpcClient.agentGetReward(wallet.address);
+        const reward = await rpcClient.agentGetReward(account.address);
 
         return {
           content: [
@@ -255,10 +256,10 @@ export function registerWalletTools(
               type: "text" as const,
               text: JSON.stringify(
                 {
-                  address: wallet.address,
-                  pending: ethers.formatEther(BigInt(reward.pending)),
-                  claimed: ethers.formatEther(BigInt(reward.claimed)),
-                  total: ethers.formatEther(BigInt(reward.total)),
+                  address: account.address,
+                  pending: formatPLM(BigInt(reward.pending)),
+                  claimed: formatPLM(BigInt(reward.claimed)),
+                  total: formatPLM(BigInt(reward.total)),
                   unit: "PLM",
                   raw: reward,
                 },

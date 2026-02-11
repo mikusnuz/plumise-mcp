@@ -5,14 +5,15 @@
  * the current wallet address and PLM balance.
  */
 
-import { ethers } from "ethers";
+import type { PrivateKeyAccount } from "viem/accounts";
+import { formatPLM } from "@plumise/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 
 export function registerWalletResource(
   server: McpServer,
   rpcClient: RpcClient,
-  wallet: ethers.Wallet
+  account: PrivateKeyAccount
 ): void {
   server.resource(
     "wallet",
@@ -24,9 +25,9 @@ export function registerWalletResource(
     },
     async () => {
       try {
-        const balanceHex = await rpcClient.getBalance(wallet.address);
+        const balanceHex = await rpcClient.getBalance(account.address);
         const balanceWei = BigInt(balanceHex);
-        const balancePlm = ethers.formatEther(balanceWei);
+        const balancePlm = formatPLM(balanceWei);
 
         return {
           contents: [
@@ -35,7 +36,7 @@ export function registerWalletResource(
               mimeType: "application/json",
               text: JSON.stringify(
                 {
-                  address: wallet.address,
+                  address: account.address,
                   balance: balancePlm,
                   balanceWei: balanceWei.toString(),
                   unit: "PLM",
@@ -55,7 +56,7 @@ export function registerWalletResource(
               mimeType: "application/json",
               text: JSON.stringify(
                 {
-                  address: wallet.address,
+                  address: account.address,
                   balance: null,
                   error: msg,
                 },

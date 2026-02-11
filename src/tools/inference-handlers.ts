@@ -5,7 +5,21 @@
  * Communicates with the Plumise Inference API gateway and the chain RPC.
  */
 
-import { ethers } from "ethers";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  getContract,
+  isAddress,
+  type Address,
+} from "viem";
+import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
+import {
+  plumise,
+  addresses,
+  rewardPoolAbi,
+  formatPLM,
+} from "@plumise/core";
 import type { InferenceConfig } from "./inference.js";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -39,20 +53,11 @@ interface ToolResult {
   isError?: boolean;
 }
 
-// ─── RewardPool Contract ABI (minimal) ──────────────────────────────
-
-const REWARD_POOL_ABI = [
-  "function pendingRewards(address agent) view returns (uint256)",
-  "function claimRewards() external",
-  "function claimedRewards(address agent) view returns (uint256)",
-  "event RewardClaimed(address indexed agent, uint256 amount)",
-];
-
-// RewardPool contract address on Plumise chain (deployed for inference rewards)
+// RewardPool contract address on Plumise chain
 // Override via PLUMISE_REWARD_POOL_ADDRESS environment variable
 const REWARD_POOL_ADDRESS =
   process.env.PLUMISE_REWARD_POOL_ADDRESS ||
-  "0x0000000000000000000000000000000000000100";
+  addresses.mainnet.RewardPool;
 
 /** Default HTTP request timeout in milliseconds */
 const FETCH_TIMEOUT_MS = 30_000;
@@ -137,15 +142,15 @@ function makeErrorResult(message: string): ToolResult {
 export async function handleServeModel(
   args: ServeModelArgs,
   config: InferenceConfig,
-  wallet: ethers.Wallet
+  account: PrivateKeyAccount
 ): Promise<ToolResult> {
   try {
     const { model, endpoint, capacity } = args;
 
     // Sign registration message for authentication
     const timestamp = Math.floor(Date.now() / 1000);
-    const message = `serve_model:${wallet.address}:${model}:${timestamp}`;
-    const signature = await wallet.signMessage(message);
+    const message = `serve_model:${account.address}:${model}:${timestamp}`;
+    const signature = await account.signMessage({ message });
 
     const result = await apiRequest(
       config.inferenceApiUrl,
@@ -156,7 +161,7 @@ export async function handleServeModel(
           model,
           endpoint,
           capacity: capacity ?? 1,
-          agent_address: wallet.address,
+          agent_address: account.address,
           signature,
           timestamp,
         },
@@ -168,7 +173,7 @@ export async function handleServeModel(
       model,
       endpoint,
       capacity: capacity ?? 1,
-      agent_address: wallet.address,
+      agent_address: account.address,
       ...(result as object),
     });
   } catch (error) {
@@ -182,7 +187,7 @@ export async function handleServeModel(
 export async function handleInference(
   args: InferenceArgs,
   config: InferenceConfig,
-  wallet: ethers.Wallet
+  account: PrivateKeyAccount
 ): Promise<ToolResult> {
   try {
     const {
@@ -195,8 +200,8 @@ export async function handleInference(
 
     // Sign inference request for metering/billing
     const timestamp = Math.floor(Date.now() / 1000);
-    const message = `inference:${wallet.address}:${model}:${timestamp}`;
-    const signature = await wallet.signMessage(message);
+    const message = `inference:${account.address}:${model}:${timestamp}`;
+    const signature = await account.signMessage({ message });
 
     // Use OpenAI-compatible chat completions API
     const result = await apiRequest(
@@ -205,7 +210,7 @@ export async function handleInference(
       {
         method: "POST",
         headers: {
-          "X-Agent-Address": wallet.address,
+          "X-Agent-Address": account.address,
           "X-Agent-Signature": signature,
           "X-Agent-Timestamp": timestamp.toString(),
         },
@@ -290,14 +295,14 @@ export async function handleModelStatus(
 export async function handleAgentRewards(
   args: AgentRewardsArgs,
   config: InferenceConfig,
-  wallet: ethers.Wallet
+  account: PrivateKeyAccount
 ): Promise<ToolResult> {
   try {
     const { action, agent_address } = args;
-    const targetAddress = agent_address || wallet.address;
+    const targetAddress = (agent_address || account.address) as Address;
 
     // Validate address
-    if (!ethers.isAddress(targetAddress)) {
+    if (!isAddress(targetAddress)) {
       return makeErrorResult(`Invalid address: ${targetAddress}`);
     }
 
@@ -313,26 +318,33 @@ export async function handleAgentRewards(
       return makeErrorResult(`Invalid RPC URL: ${config.rpcUrl}`);
     }
 
-    const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    const publicClient = createPublicClient({
+      chain: plumise,
+      transport: http(config.rpcUrl),
+    });
 
     switch (action) {
       case "check": {
-        const rewardPool = new ethers.Contract(
-          REWARD_POOL_ADDRESS,
-          REWARD_POOL_ABI,
-          provider
-        );
-
         const [pending, claimed] = await Promise.all([
-          rewardPool.pendingRewards(targetAddress) as Promise<bigint>,
-          rewardPool.claimedRewards(targetAddress) as Promise<bigint>,
+          publicClient.readContract({
+            address: REWARD_POOL_ADDRESS as Address,
+            abi: rewardPoolAbi,
+            functionName: "pendingRewards",
+            args: [targetAddress],
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: REWARD_POOL_ADDRESS as Address,
+            abi: rewardPoolAbi,
+            functionName: "getPendingReward",
+            args: [targetAddress],
+          }) as Promise<bigint>,
         ]);
 
         return makeTextResult({
           address: targetAddress,
-          pending: ethers.formatEther(pending),
-          claimed: ethers.formatEther(claimed),
-          total: ethers.formatEther(pending + claimed),
+          pending: formatPLM(pending),
+          claimed: formatPLM(claimed),
+          total: formatPLM(pending + claimed),
           unit: "PLM",
           raw: {
             pendingWei: pending.toString(),
@@ -348,67 +360,83 @@ export async function handleAgentRewards(
           );
         }
 
-        const signer = new ethers.Wallet(config.privateKey, provider);
-        const rewardPool = new ethers.Contract(
-          REWARD_POOL_ADDRESS,
-          REWARD_POOL_ABI,
-          signer
-        );
+        const pk = config.privateKey.startsWith("0x")
+          ? config.privateKey
+          : `0x${config.privateKey}`;
+        const signerAccount = privateKeyToAccount(pk as `0x${string}`);
+        const walletClient = createWalletClient({
+          account: signerAccount,
+          chain: plumise,
+          transport: http(config.rpcUrl),
+        });
 
         // Check pending amount first
-        const pending = (await rewardPool.pendingRewards(
-          signer.address
-        )) as bigint;
+        const pendingAmount = await publicClient.readContract({
+          address: REWARD_POOL_ADDRESS as Address,
+          abi: rewardPoolAbi,
+          functionName: "pendingRewards",
+          args: [signerAccount.address],
+        }) as bigint;
 
-        if (pending === 0n) {
+        if (pendingAmount === 0n) {
           return makeTextResult({
             status: "no_rewards",
-            address: signer.address,
+            address: signerAccount.address,
             message: "No pending rewards to claim.",
           });
         }
 
         // Claim rewards
-        const tx = await rewardPool.claimRewards();
-        const receipt = await tx.wait();
+        const hash = await walletClient.writeContract({
+          address: REWARD_POOL_ADDRESS as Address,
+          abi: rewardPoolAbi,
+          functionName: "claimReward",
+          args: [],
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
         return makeTextResult({
           status: "claimed",
-          txHash: receipt.hash,
-          address: signer.address,
-          amount: ethers.formatEther(pending),
+          txHash: receipt.transactionHash,
+          address: signerAccount.address,
+          amount: formatPLM(pendingAmount),
           unit: "PLM",
-          blockNumber: receipt.blockNumber,
+          blockNumber: Number(receipt.blockNumber),
         });
       }
 
       case "history": {
         // Query past RewardClaimed events for the agent
-        const rewardPool = new ethers.Contract(
-          REWARD_POOL_ADDRESS,
-          REWARD_POOL_ABI,
-          provider
-        );
+        const currentBlock = await publicClient.getBlockNumber();
+        const fromBlock = currentBlock > 216000n ? currentBlock - 216000n : 0n;
 
-        const filter = rewardPool.filters.RewardClaimed(targetAddress);
-
-        // Get events from last ~30 days (~216000 blocks at 12s/block)
-        const currentBlock = await provider.getBlockNumber();
-        const fromBlock = Math.max(0, currentBlock - 216000);
-
-        const events = await rewardPool.queryFilter(filter, fromBlock);
+        const logs = await publicClient.getLogs({
+          address: REWARD_POOL_ADDRESS as Address,
+          event: {
+            type: "event",
+            name: "RewardClaimed",
+            inputs: [
+              { name: "agent", type: "address", indexed: true },
+              { name: "amount", type: "uint256", indexed: false },
+            ],
+          } as const,
+          args: {
+            agent: targetAddress,
+          },
+          fromBlock,
+          toBlock: currentBlock,
+        });
 
         const history = await Promise.all(
-          events.map(async (event) => {
-            const log = event as ethers.EventLog;
-            const block = await log.getBlock();
+          logs.map(async (log) => {
+            const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
             return {
               txHash: log.transactionHash,
-              amount: ethers.formatEther(log.args[1]),
+              amount: formatPLM((log as any).args.amount as bigint),
               unit: "PLM",
-              blockNumber: log.blockNumber,
+              blockNumber: Number(log.blockNumber),
               timestamp: block
-                ? new Date(block.timestamp * 1000).toISOString()
+                ? new Date(Number(block.timestamp) * 1000).toISOString()
                 : null,
             };
           })
@@ -418,8 +446,8 @@ export async function handleAgentRewards(
           address: targetAddress,
           claimHistory: history,
           totalClaims: history.length,
-          fromBlock,
-          toBlock: currentBlock,
+          fromBlock: Number(fromBlock),
+          toBlock: Number(currentBlock),
         });
       }
 

@@ -4,7 +4,7 @@
   "description": "MCP server for Plumise AI-native blockchain agent_* RPC namespace",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "commonjs",
+  "type": "module",
   "bin": {
     "plumise-mcp": "dist/index.js"
   },
@@ -40,7 +40,8 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "ethers": "^6.16.0"
+    "@plumise/core": "^0.1.0",
+    "viem": "^2.45.3"
   },
   "devDependencies": {
     "@types/node": "^25.2.2",
