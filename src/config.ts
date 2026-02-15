@@ -22,7 +22,7 @@ export function loadConfig(): PlumiseConfig {
   if (!nodeUrl) {
     throw new Error(
       "PLUMISE_NODE_URL environment variable is required. " +
-      "Example: https://node-1.plumise.com/rpc"
+      "Example: https://plug.plumise.com/rpc"
     );
   }
 

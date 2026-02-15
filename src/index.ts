@@ -9,7 +9,7 @@
  * wallet, node, and network state.
  *
  * Usage:
- *   PLUMISE_NODE_URL=https://node-1.plumise.com/rpc \
+ *   PLUMISE_NODE_URL=https://plug.plumise.com/rpc \
  *   PLUMISE_PRIVATE_KEY=0x... \
  *   plumise-mcp
  */

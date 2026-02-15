@@ -29,7 +29,7 @@ Set environment variables:
 ### As MCP Server (stdio)
 
 ```bash
-PLUMISE_NODE_URL=https://node-1.plumise.com/rpc \
+PLUMISE_NODE_URL=https://plug.plumise.com/rpc \
 PLUMISE_PRIVATE_KEY=0x... \
 npx plumise-mcp
 ```
@@ -45,7 +45,7 @@ Add to `claude_desktop_config.json`:
       "command": "npx",
       "args": ["plumise-mcp"],
       "env": {
-        "PLUMISE_NODE_URL": "https://node-1.plumise.com/rpc",
+        "PLUMISE_NODE_URL": "https://plug.plumise.com/rpc",
         "PLUMISE_PRIVATE_KEY": "0x..."
       }
     }
