@@ -1,288 +1,105 @@
-/**
- * Wallet Tools
- *
- * MCP tools for wallet operations on the Plumise network:
- * - check_balance: Get PLM balance
- * - transfer: Send PLM to another address
- * - claim_reward: Claim accumulated agent rewards
- * - pending_reward: Check pending reward balance
- */
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
+import { isAddress, parseEther } from 'viem'
+import { formatPLM } from '@plumise/core'
+import { getClient, getAccount } from '../client.js'
 
-import { z } from "zod";
-import { isAddress, parseEther, type Address } from "viem";
-import type { PrivateKeyAccount } from "viem/accounts";
-import { formatPLM } from "@plumise/core";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { RpcClient } from "../services/rpc-client.js";
-import type { PlumiseConfig } from "../config.js";
-
-export interface WalletToolDeps {
-  rpcClient: RpcClient;
-  account: PrivateKeyAccount;
-  config: PlumiseConfig;
-}
-
-export function registerWalletTools(
-  server: McpServer,
-  getDeps: () => WalletToolDeps
-): void {
-  // ─── check_balance ─────────────────────────────────────────────
-
+export function registerWalletTools(server: McpServer) {
   server.tool(
-    "check_balance",
-    "Check the PLM (native token) balance of a wallet address on the Plumise network. " +
-      "If no address is provided, checks the agent's own wallet balance.",
-    {
-      address: z
-        .string()
-        .optional()
-        .describe(
-          "The wallet address to check. Defaults to the agent's own address."
-        ),
-    },
+    'get_balance',
+    'Get PLM balance of an address',
+    { address: z.string().optional().describe('Address to check (default: own wallet)') },
     async ({ address }) => {
-      try {
-        const { rpcClient, account } = getDeps();
-        const targetAddress = address || account.address;
-
-        if (!isAddress(targetAddress)) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Invalid address: ${targetAddress}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        const balanceHex = await rpcClient.getBalance(targetAddress);
-        const balanceWei = BigInt(balanceHex);
-        const balancePlm = formatPLM(balanceWei);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  address: targetAddress,
-                  balance: balancePlm,
-                  unit: "PLM",
-                  balanceWei: balanceWei.toString(),
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return {
-          content: [
-            { type: "text" as const, text: `Failed to check balance: ${msg}` },
-          ],
-          isError: true,
-        };
+      const client = getClient()
+      const target = address || getAccount().address
+      if (!isAddress(target)) {
+        return { content: [{ type: 'text', text: `Invalid address: ${target}` }], isError: true }
       }
-    }
-  );
-
-  // ─── transfer ──────────────────────────────────────────────────
+      const balance = await client.publicClient.getBalance({ address: target as `0x${string}` })
+      return {
+        content: [{
+          type: 'text',
+          text: `Address: ${target}\nBalance: ${formatPLM(balance)} PLM (${balance} wei)`,
+        }],
+      }
+    },
+  )
 
   server.tool(
-    "transfer",
-    "Send PLM (native token) from the agent's wallet to another address on " +
-      "the Plumise network. Requires the amount in PLM (not wei).",
+    'transfer',
+    'Transfer PLM to another address',
     {
-      to: z
-        .string()
-        .describe("The recipient wallet address (0x-prefixed hex)."),
-      amount: z
-        .string()
-        .describe("Amount of PLM to send (e.g., '1.5' for 1.5 PLM)."),
+      to: z.string().describe('Recipient address'),
+      amount: z.string().describe('Amount in PLM (e.g. "1.5")'),
     },
     async ({ to, amount }) => {
-      try {
-        const { rpcClient, account, config } = getDeps();
-
-        if (!isAddress(to)) {
-          return {
-            content: [
-              { type: "text" as const, text: `Invalid recipient address: ${to}` },
-            ],
-            isError: true,
-          };
-        }
-
-        let valueWei: bigint;
-        try {
-          valueWei = parseEther(amount);
-        } catch {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Invalid amount: ${amount}. Provide a valid decimal number.`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        if (valueWei <= 0n) {
-          return {
-            content: [
-              { type: "text" as const, text: "Amount must be greater than 0." },
-            ],
-            isError: true,
-          };
-        }
-
-        const nonceHex = await rpcClient.getTransactionCount(account.address);
-        const gasPriceHex = await rpcClient.getGasPrice();
-
-        const nonce = parseInt(nonceHex, 16);
-        const gasPrice = BigInt(gasPriceHex);
-
-        const tx = {
-          to: to as Address,
-          value: valueWei,
-          nonce,
-          gas: 21000n,
-          gasPrice,
-          chainId: config.chainId,
-          type: "legacy" as const,
-        };
-
-        const signedTx = await account.signTransaction(tx);
-        const txHash = await rpcClient.sendRawTransaction(signedTx);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  status: "sent",
-                  txHash,
-                  from: account.address,
-                  to,
-                  amount,
-                  unit: "PLM",
-                  nonce,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return {
-          content: [
-            { type: "text" as const, text: `Transfer failed: ${msg}` },
-          ],
-          isError: true,
-        };
+      if (!isAddress(to)) {
+        return { content: [{ type: 'text', text: `Invalid address: ${to}` }], isError: true }
       }
-    }
-  );
+      const client = getClient()
+      if (!client.walletClient) {
+        return { content: [{ type: 'text', text: 'Wallet client not available (no private key)' }], isError: true }
+      }
 
-  // ─── claim_reward ──────────────────────────────────────────────
+      const value = parseEther(amount)
+      const hash = await client.walletClient.sendTransaction({
+        to: to as `0x${string}`,
+        value,
+        chain: client.chain,
+        account: getAccount(),
+      })
+
+      const receipt = await client.publicClient.waitForTransactionReceipt({ hash })
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            status: receipt.status === 'success' ? 'success' : 'reverted',
+            hash,
+            from: getAccount().address,
+            to,
+            amount: `${amount} PLM`,
+            gasUsed: receipt.gasUsed.toString(),
+            blockNumber: receipt.blockNumber.toString(),
+          }, null, 2),
+        }],
+      }
+    },
+  )
 
   server.tool(
-    "claim_reward",
-    "Claim accumulated agent rewards from the Plumise network. Rewards are " +
-      "earned by solving challenges and maintaining uptime. This sends a " +
-      "transaction to claim all pending rewards.",
-    {},
-    async () => {
-      try {
-        const { rpcClient, account } = getDeps();
-
-        const timestamp = Math.floor(Date.now() / 1000);
-        const message = `claim:${account.address}:${timestamp}`;
-        const signature = await account.signMessage({ message });
-
-        const result = await rpcClient.agentClaimReward(
-          account.address,
-          signature
-        );
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  status: "claimed",
-                  txHash: result.txHash,
-                  amount: formatPLM(BigInt(result.amount)),
-                  unit: "PLM",
-                  amountWei: result.amount,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return {
-          content: [
-            { type: "text" as const, text: `Claim failed: ${msg}` },
-          ],
-          isError: true,
-        };
+    'get_nonce',
+    'Get transaction count (nonce) for an address',
+    { address: z.string().optional().describe('Address (default: own wallet)') },
+    async ({ address }) => {
+      const client = getClient()
+      const target = (address || getAccount().address) as `0x${string}`
+      const nonce = await client.publicClient.getTransactionCount({ address: target })
+      return {
+        content: [{ type: 'text', text: `Address: ${target}\nNonce: ${nonce}` }],
       }
-    }
-  );
-
-  // ─── pending_reward ────────────────────────────────────────────
+    },
+  )
 
   server.tool(
-    "pending_reward",
-    "Check the pending (unclaimed) reward balance for this agent on the " +
-      "Plumise network. Shows pending, claimed, and total rewards.",
-    {},
-    async () => {
-      try {
-        const { rpcClient, account } = getDeps();
-        const reward = await rpcClient.agentGetReward(account.address);
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: JSON.stringify(
-                {
-                  address: account.address,
-                  pending: formatPLM(BigInt(reward.pending)),
-                  claimed: formatPLM(BigInt(reward.claimed)),
-                  total: formatPLM(BigInt(reward.total)),
-                  unit: "PLM",
-                  raw: reward,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return {
-          content: [
-            { type: "text" as const, text: `Failed to get rewards: ${msg}` },
-          ],
-          isError: true,
-        };
+    'get_code',
+    'Get bytecode at an address (check if contract)',
+    { address: z.string().describe('Address to check') },
+    async ({ address }) => {
+      if (!isAddress(address)) {
+        return { content: [{ type: 'text', text: `Invalid address: ${address}` }], isError: true }
       }
-    }
-  );
+      const client = getClient()
+      const code = await client.publicClient.getCode({ address: address as `0x${string}` })
+      const isContract = code && code !== '0x'
+      return {
+        content: [{
+          type: 'text',
+          text: isContract
+            ? `Address ${address} is a contract (${(code!.length - 2) / 2} bytes bytecode)`
+            : `Address ${address} is an EOA (no contract code)`,
+        }],
+      }
+    },
+  )
 }

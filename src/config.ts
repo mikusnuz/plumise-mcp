@@ -1,41 +1,19 @@
-/**
- * Plumise MCP Server Configuration
- *
- * All configuration is read from environment variables.
- */
-
 export interface PlumiseConfig {
-  /** Plumise node JSON-RPC URL */
-  nodeUrl: string;
-  /** Private key for signing transactions (hex, with or without 0x prefix) */
-  privateKey: string;
-  /** Heartbeat interval in milliseconds (default: 60000) */
-  heartbeatIntervalMs: number;
-  /** Chain ID (default: 8881217) */
-  chainId: number;
-  /** Plumise Inference API gateway URL (default: http://localhost:3200) */
-  inferenceApiUrl: string;
+  /** RPC URL override (uses plumise-core default if empty) */
+  rpcUrl: string
+  /** Private key for signing transactions (hex, with 0x prefix) */
+  privateKey: string
+  /** Network: 'mainnet' | 'testnet' */
+  network: 'mainnet' | 'testnet'
+  /** Inference API URL for consumer tools */
+  inferenceApiUrl: string
 }
 
 export function loadConfig(): PlumiseConfig {
-  const nodeUrl = process.env.PLUMISE_NODE_URL || "";
-  const privateKey = process.env.PLUMISE_PRIVATE_KEY || "";
-  const heartbeatIntervalMs = parseInt(
-    process.env.PLUMISE_HEARTBEAT_INTERVAL_MS || "60000",
-    10
-  );
-  const chainId = parseInt(
-    process.env.PLUMISE_CHAIN_ID || "8881217",
-    10
-  );
-  const inferenceApiUrl =
-    process.env.PLUMISE_INFERENCE_API_URL || "http://localhost:3200";
-
   return {
-    nodeUrl,
-    privateKey,
-    heartbeatIntervalMs,
-    chainId,
-    inferenceApiUrl,
-  };
+    rpcUrl: process.env.PLUMISE_RPC_URL || '',
+    privateKey: process.env.PLUMISE_PRIVATE_KEY || '',
+    network: (process.env.PLUMISE_NETWORK as 'mainnet' | 'testnet') || 'mainnet',
+    inferenceApiUrl: process.env.PLUMISE_INFERENCE_API_URL || 'https://inference.plumise.com',
+  }
 }
