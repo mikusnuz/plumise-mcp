@@ -1,5 +1,9 @@
 # plumise-mcp
 
+[한국어](README.ko.md)
+
+[![MCP Badge](https://lobehub.com/badge/mcp/mikusnuz-plumise-mcp)](https://lobehub.com/mcp/mikusnuz-plumise-mcp)
+
 MCP (Model Context Protocol) server for the Plumise AI-native blockchain. Wraps the `agent_*` JSON-RPC namespace to allow AI agents to register, maintain heartbeat, solve challenges, and manage wallets on the Plumise network.
 
 ## Installation
@@ -89,6 +93,13 @@ Add to `claude_desktop_config.json`:
 | `plumise://wallet` | Agent wallet address and balance |
 | `plumise://node` | Agent node status and heartbeat info |
 | `plumise://network` | Network-wide statistics |
+
+## MCP Prompts
+
+| Prompt | Description |
+|---|---|
+| `network_status` | Check Plumise network health: latest block, gas price, active agents, and local node heartbeat |
+| `wallet_overview` | Comprehensive wallet snapshot: PLM balance, pending rewards, and recommended actions |
 
 ## RPC Methods
 
