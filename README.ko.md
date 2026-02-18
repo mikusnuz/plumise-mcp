@@ -12,6 +12,7 @@
 
 - Node.js 18 이상
 - Plumise 지갑 개인키
+- Plug RPC API 키 ([여기서 발급](https://plug.plumise.com))
 
 ## 빠른 시작
 
@@ -26,6 +27,7 @@ Claude Desktop 설정 파일(`~/Library/Application Support/Claude/claude_deskto
       "command": "npx",
       "args": ["-y", "plumise-mcp"],
       "env": {
+        "PLUMISE_RPC_URL": "https://plug.plumise.com/rpc/YOUR_API_KEY",
         "PLUMISE_PRIVATE_KEY": "0x..."
       }
     }
@@ -36,15 +38,15 @@ Claude Desktop 설정 파일(`~/Library/Application Support/Claude/claude_deskto
 ### 직접 실행
 
 ```bash
-PLUMISE_PRIVATE_KEY=0x... npx plumise-mcp
+PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x... npx plumise-mcp
 ```
 
 ## 환경 변수
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
+| `PLUMISE_RPC_URL` | 예 | Plug RPC 엔드포인트 ([키 발급](https://plug.plumise.com)) |
 | `PLUMISE_PRIVATE_KEY` | 예 | 지갑 개인키 |
-| `PLUMISE_RPC_URL` | 아니오 | 커스텀 RPC 엔드포인트 (기본값 대체) |
 | `PLUMISE_NETWORK` | 아니오 | `mainnet` 또는 `testnet` (기본값: `mainnet`) |
 | `PLUMISE_INFERENCE_API_URL` | 아니오 | 커스텀 추론 API 엔드포인트 |
 

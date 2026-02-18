@@ -11,7 +11,7 @@ export function initClient(config: PlumiseConfig) {
 
   _client = createPlumiseClient({
     chain: config.network,
-    ...(config.rpcUrl ? { rpcUrl: config.rpcUrl } : {}),
+    rpcUrl: config.rpcUrl,
     account: _account,
   })
 }

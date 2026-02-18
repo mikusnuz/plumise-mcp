@@ -12,6 +12,7 @@ MCP (Model Context Protocol) server for the [Plumise](https://plumise.com) block
 
 - Node.js 18+
 - A Plumise wallet private key
+- A Plug RPC API key ([get one here](https://plug.plumise.com))
 
 ## Quick Start
 
@@ -26,6 +27,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
       "command": "npx",
       "args": ["-y", "plumise-mcp"],
       "env": {
+        "PLUMISE_RPC_URL": "https://plug.plumise.com/rpc/YOUR_API_KEY",
         "PLUMISE_PRIVATE_KEY": "0x..."
       }
     }
@@ -36,15 +38,15 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 ### Run directly
 
 ```bash
-PLUMISE_PRIVATE_KEY=0x... npx plumise-mcp
+PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x... npx plumise-mcp
 ```
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
+| `PLUMISE_RPC_URL` | Yes | Plug RPC endpoint ([get a key](https://plug.plumise.com)) |
 | `PLUMISE_PRIVATE_KEY` | Yes | Wallet private key |
-| `PLUMISE_RPC_URL` | No | Custom RPC endpoint (overrides default) |
 | `PLUMISE_NETWORK` | No | `mainnet` or `testnet` (default: `mainnet`) |
 | `PLUMISE_INFERENCE_API_URL` | No | Custom inference API endpoint |
 

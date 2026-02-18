@@ -1,5 +1,5 @@
 export interface PlumiseConfig {
-  /** RPC URL override (uses plumise-core default if empty) */
+  /** RPC URL (required — get one at https://plug.plumise.com) */
   rpcUrl: string
   /** Private key for signing transactions (hex, with 0x prefix) */
   privateKey: string
