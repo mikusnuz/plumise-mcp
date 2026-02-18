@@ -18,45 +18,16 @@ export interface PlumiseConfig {
 }
 
 export function loadConfig(): PlumiseConfig {
-  const nodeUrl = process.env.PLUMISE_NODE_URL;
-  if (!nodeUrl) {
-    throw new Error(
-      "PLUMISE_NODE_URL environment variable is required. " +
-      "Example: https://plug.plumise.com/rpc"
-    );
-  }
-
-  // Validate URL format and protocol
-  try {
-    const parsed = new URL(nodeUrl);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      throw new Error(`Unsupported protocol: ${parsed.protocol}`);
-    }
-  } catch (e) {
-    throw new Error(
-      `Invalid PLUMISE_NODE_URL "${nodeUrl}": ${e instanceof Error ? e.message : String(e)}. ` +
-      "Must be a valid http/https URL."
-    );
-  }
-
-  const privateKey = process.env.PLUMISE_PRIVATE_KEY;
-  if (!privateKey) {
-    throw new Error(
-      "PLUMISE_PRIVATE_KEY environment variable is required. " +
-      "Provide a hex-encoded private key (with or without 0x prefix)."
-    );
-  }
-
+  const nodeUrl = process.env.PLUMISE_NODE_URL || "";
+  const privateKey = process.env.PLUMISE_PRIVATE_KEY || "";
   const heartbeatIntervalMs = parseInt(
     process.env.PLUMISE_HEARTBEAT_INTERVAL_MS || "60000",
     10
   );
-
   const chainId = parseInt(
     process.env.PLUMISE_CHAIN_ID || "8881217",
     10
   );
-
   const inferenceApiUrl =
     process.env.PLUMISE_INFERENCE_API_URL || "http://localhost:3200";
 

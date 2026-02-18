@@ -10,11 +10,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import { HeartbeatService } from "../services/heartbeat.js";
 
+export interface NodeResourceDeps {
+  rpcClient: RpcClient;
+  account: PrivateKeyAccount;
+  heartbeat: HeartbeatService;
+}
+
 export function registerNodeResource(
   server: McpServer,
-  rpcClient: RpcClient,
-  account: PrivateKeyAccount,
-  heartbeat: HeartbeatService
+  getDeps: () => NodeResourceDeps
 ): void {
   server.resource(
     "node",
@@ -27,6 +31,7 @@ export function registerNodeResource(
     },
     async () => {
       try {
+        const { rpcClient, account, heartbeat } = getDeps();
         const status = await rpcClient.agentGetStatus(account.address);
 
         return {
@@ -68,16 +73,15 @@ export function registerNodeResource(
               text: JSON.stringify(
                 {
                   agent: {
-                    address: account.address,
+                    address: null,
                     registered: false,
                     error: msg,
                   },
                   heartbeat: {
-                    running: heartbeat.isRunning,
-                    lastHeartbeat:
-                      heartbeat.lastHeartbeat?.toISOString() ?? null,
-                    totalHeartbeats: heartbeat.heartbeatCount,
-                    lastError: heartbeat.lastError,
+                    running: false,
+                    lastHeartbeat: null,
+                    totalHeartbeats: 0,
+                    lastError: msg,
                   },
                 },
                 null,

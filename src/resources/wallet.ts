@@ -10,10 +10,14 @@ import { formatPLM } from "@plumise/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 
+export interface WalletResourceDeps {
+  rpcClient: RpcClient;
+  account: PrivateKeyAccount;
+}
+
 export function registerWalletResource(
   server: McpServer,
-  rpcClient: RpcClient,
-  account: PrivateKeyAccount
+  getDeps: () => WalletResourceDeps
 ): void {
   server.resource(
     "wallet",
@@ -25,6 +29,7 @@ export function registerWalletResource(
     },
     async () => {
       try {
+        const { rpcClient, account } = getDeps();
         const balanceHex = await rpcClient.getBalance(account.address);
         const balanceWei = BigInt(balanceHex);
         const balancePlm = formatPLM(balanceWei);
@@ -56,7 +61,7 @@ export function registerWalletResource(
               mimeType: "application/json",
               text: JSON.stringify(
                 {
-                  address: account.address,
+                  address: null,
                   balance: null,
                   error: msg,
                 },

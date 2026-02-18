@@ -9,18 +9,22 @@
  */
 
 import { z } from "zod";
-import { isAddress, parseEther, serializeTransaction, type Address } from "viem";
+import { isAddress, parseEther, type Address } from "viem";
 import type { PrivateKeyAccount } from "viem/accounts";
 import { formatPLM } from "@plumise/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import type { PlumiseConfig } from "../config.js";
 
+export interface WalletToolDeps {
+  rpcClient: RpcClient;
+  account: PrivateKeyAccount;
+  config: PlumiseConfig;
+}
+
 export function registerWalletTools(
   server: McpServer,
-  rpcClient: RpcClient,
-  account: PrivateKeyAccount,
-  config: PlumiseConfig
+  getDeps: () => WalletToolDeps
 ): void {
   // ─── check_balance ─────────────────────────────────────────────
 
@@ -38,9 +42,9 @@ export function registerWalletTools(
     },
     async ({ address }) => {
       try {
+        const { rpcClient, account } = getDeps();
         const targetAddress = address || account.address;
 
-        // Validate address format
         if (!isAddress(targetAddress)) {
           return {
             content: [
@@ -102,7 +106,8 @@ export function registerWalletTools(
     },
     async ({ to, amount }) => {
       try {
-        // Validate recipient address
+        const { rpcClient, account, config } = getDeps();
+
         if (!isAddress(to)) {
           return {
             content: [
@@ -112,7 +117,6 @@ export function registerWalletTools(
           };
         }
 
-        // Parse amount
         let valueWei: bigint;
         try {
           valueWei = parseEther(amount);
@@ -137,14 +141,12 @@ export function registerWalletTools(
           };
         }
 
-        // Get nonce and gas price
         const nonceHex = await rpcClient.getTransactionCount(account.address);
         const gasPriceHex = await rpcClient.getGasPrice();
 
         const nonce = parseInt(nonceHex, 16);
         const gasPrice = BigInt(gasPriceHex);
 
-        // Build and sign transaction
         const tx = {
           to: to as Address,
           value: valueWei,
@@ -200,6 +202,8 @@ export function registerWalletTools(
     {},
     async () => {
       try {
+        const { rpcClient, account } = getDeps();
+
         const timestamp = Math.floor(Date.now() / 1000);
         const message = `claim:${account.address}:${timestamp}`;
         const signature = await account.signMessage({ message });
@@ -248,6 +252,7 @@ export function registerWalletTools(
     {},
     async () => {
       try {
+        const { rpcClient, account } = getDeps();
         const reward = await rpcClient.agentGetReward(account.address);
 
         return {

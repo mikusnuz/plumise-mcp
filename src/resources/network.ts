@@ -9,10 +9,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import type { PlumiseConfig } from "../config.js";
 
+export interface NetworkResourceDeps {
+  rpcClient: RpcClient;
+  config: PlumiseConfig;
+}
+
 export function registerNetworkResource(
   server: McpServer,
-  rpcClient: RpcClient,
-  config: PlumiseConfig
+  getDeps: () => NetworkResourceDeps
 ): void {
   server.resource(
     "network",
@@ -25,6 +29,7 @@ export function registerNetworkResource(
     },
     async () => {
       try {
+        const { rpcClient, config } = getDeps();
         const [networkStats, blockNumberHex, chainIdHex, gasPriceHex] =
           await Promise.all([
             rpcClient.agentGetNetworkStats(),
@@ -68,6 +73,7 @@ export function registerNetworkResource(
         };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
+        const { config } = getDeps();
         return {
           contents: [
             {

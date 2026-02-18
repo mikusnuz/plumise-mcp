@@ -5,8 +5,8 @@
  *
  * A Model Context Protocol server that wraps the Plumise blockchain's
  * agent_* RPC namespace. Provides tools for node management, wallet
- * operations, and challenge solving, plus resources for real-time
- * wallet, node, and network state.
+ * operations, and inference, plus resources for real-time wallet, node,
+ * and network state.
  *
  * Usage:
  *   PLUMISE_NODE_URL=https://plug.plumise.com/rpc \
@@ -19,7 +19,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { z } from "zod";
 
-import { loadConfig } from "./config.js";
+import { loadConfig, type PlumiseConfig } from "./config.js";
 import { RpcClient } from "./services/rpc-client.js";
 import { HeartbeatService } from "./services/heartbeat.js";
 import { registerNodeTools } from "./tools/node.js";
@@ -29,31 +29,46 @@ import { registerWalletResource } from "./resources/wallet.js";
 import { registerNodeResource } from "./resources/node.js";
 import { registerNetworkResource } from "./resources/network.js";
 
+interface LazyState {
+  config: PlumiseConfig;
+  rpcClient: RpcClient;
+  account: PrivateKeyAccount;
+  heartbeat: HeartbeatService;
+}
+
+let lazyState: LazyState | null = null;
+
+function getState(): LazyState {
+  if (!lazyState) {
+    const config = loadConfig();
+
+    if (!config.nodeUrl || !config.privateKey) {
+      throw new Error(
+        "PLUMISE_NODE_URL and PLUMISE_PRIVATE_KEY environment variables are required."
+      );
+    }
+
+    const pk = config.privateKey.startsWith("0x")
+      ? config.privateKey
+      : `0x${config.privateKey}`;
+    const account = privateKeyToAccount(pk as `0x${string}`);
+    const rpcClient = new RpcClient(config.nodeUrl);
+    const heartbeat = new HeartbeatService(
+      rpcClient,
+      account,
+      config.heartbeatIntervalMs
+    );
+
+    lazyState = { config, rpcClient, account, heartbeat };
+  }
+  return lazyState;
+}
+
 async function main(): Promise<void> {
-  // Load configuration from environment
-  const config = loadConfig();
-
-  // Create account from private key
-  const privateKey = config.privateKey.startsWith("0x")
-    ? config.privateKey
-    : `0x${config.privateKey}`;
-  const account = privateKeyToAccount(privateKey as `0x${string}`);
-
-  // Create RPC client
-  const rpcClient = new RpcClient(config.nodeUrl);
-
-  // Create heartbeat service
-  const heartbeat = new HeartbeatService(
-    rpcClient,
-    account,
-    config.heartbeatIntervalMs
-  );
-
-  // Create MCP server
   const server = new McpServer(
     {
       name: "plumise-mcp",
-      version: "1.1.0",
+      version: "1.2.0",
     },
     {
       capabilities: {
@@ -64,17 +79,13 @@ async function main(): Promise<void> {
     }
   );
 
-  // Register tools
-  registerNodeTools(server, rpcClient, account, heartbeat);
-  registerWalletTools(server, rpcClient, account, config);
-  registerInferenceTools(server, rpcClient, account, config);
+  registerNodeTools(server, () => getState());
+  registerWalletTools(server, () => getState());
+  registerInferenceTools(server, () => getState());
 
-  // Register resources
-  registerWalletResource(server, rpcClient, account);
-  registerNodeResource(server, rpcClient, account, heartbeat);
-  registerNetworkResource(server, rpcClient, config);
-
-  // Register prompts
+  registerWalletResource(server, () => getState());
+  registerNodeResource(server, () => getState());
+  registerNetworkResource(server, () => getState());
 
   server.prompt(
     "network_status",
@@ -133,13 +144,13 @@ async function main(): Promise<void> {
     })
   );
 
-  // Connect via stdio transport
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  // Graceful shutdown
   const shutdown = async () => {
-    heartbeat.stop();
+    if (lazyState) {
+      lazyState.heartbeat.stop();
+    }
     await server.close();
     process.exit(0);
   };
@@ -147,9 +158,7 @@ async function main(): Promise<void> {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
-  console.error(
-    `[plumise-mcp] Server started. Agent address: ${account.address}`
-  );
+  console.error("[plumise-mcp] Server started. Waiting for tool calls.");
 }
 
 main().catch((error) => {

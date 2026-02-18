@@ -15,11 +15,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RpcClient } from "../services/rpc-client.js";
 import { HeartbeatService } from "../services/heartbeat.js";
 
+export interface NodeToolDeps {
+  rpcClient: RpcClient;
+  account: PrivateKeyAccount;
+  heartbeat: HeartbeatService;
+}
+
 export function registerNodeTools(
   server: McpServer,
-  rpcClient: RpcClient,
-  account: PrivateKeyAccount,
-  heartbeat: HeartbeatService
+  getDeps: () => NodeToolDeps
 ): void {
   // ─── start_node ────────────────────────────────────────────────
 
@@ -30,18 +34,17 @@ export function registerNodeTools(
     {},
     async () => {
       try {
-        // Sign registration message
+        const { rpcClient, account, heartbeat } = getDeps();
+
         const timestamp = Math.floor(Date.now() / 1000);
         const message = `register:${account.address}:${timestamp}`;
         const signature = await account.signMessage({ message });
 
-        // Register with the network
         const result = await rpcClient.agentRegister(
           account.address,
           signature
         );
 
-        // Start heartbeat
         await heartbeat.start();
 
         return {
@@ -81,6 +84,8 @@ export function registerNodeTools(
     {},
     async () => {
       try {
+        const { account, heartbeat } = getDeps();
+
         heartbeat.stop();
 
         return {
@@ -119,6 +124,7 @@ export function registerNodeTools(
     {},
     async () => {
       try {
+        const { rpcClient, account, heartbeat } = getDeps();
         const status = await rpcClient.agentGetStatus(account.address);
 
         return {
@@ -161,7 +167,7 @@ export function registerNodeTools(
     {},
     async () => {
       try {
-        // Get current challenge
+        const { rpcClient, account } = getDeps();
         const challenge = await rpcClient.agentGetChallenge(account.address);
 
         if (!challenge || !challenge.id) {
@@ -175,7 +181,6 @@ export function registerNodeTools(
           };
         }
 
-        // Check if challenge has expired
         const now = Math.floor(Date.now() / 1000);
         if (challenge.expiresAt > 0 && now >= challenge.expiresAt) {
           return {
@@ -196,8 +201,6 @@ export function registerNodeTools(
           };
         }
 
-        // Solve challenge: find a nonce such that
-        // keccak256(challengeData + nonce) has `difficulty` leading zero bits
         const solution = solveChallenge(challenge.data, challenge.difficulty);
 
         if (!solution) {
@@ -220,7 +223,6 @@ export function registerNodeTools(
           };
         }
 
-        // Sign and submit solution
         const submitMessage = `solution:${account.address}:${challenge.id}:${solution}`;
         const signature = await account.signMessage({ message: submitMessage });
 
@@ -264,11 +266,6 @@ export function registerNodeTools(
 
 const MAX_ITERATIONS = 1_000_000;
 
-/**
- * Brute-force solve a hash challenge.
- * Finds a nonce such that keccak256(data + nonce) starts with
- * at least `difficulty` leading zero bits.
- */
 function solveChallenge(data: string, difficulty: number): string | null {
   for (let nonce = 0; nonce < MAX_ITERATIONS; nonce++) {
     const input = data + nonce.toString(16).padStart(8, "0");
@@ -281,21 +278,15 @@ function solveChallenge(data: string, difficulty: number): string | null {
   return null;
 }
 
-/**
- * Check if a hex hash string has at least `bits` leading zero bits.
- */
 function hasLeadingZeroBits(hash: string, bits: number): boolean {
-  // Remove 0x prefix
   const hex = hash.startsWith("0x") ? hash.slice(2) : hash;
   const fullNibbles = Math.floor(bits / 4);
   const remainingBits = bits % 4;
 
-  // Check full zero nibbles
   for (let i = 0; i < fullNibbles; i++) {
     if (hex[i] !== "0") return false;
   }
 
-  // Check remaining bits in the next nibble
   if (remainingBits > 0 && fullNibbles < hex.length) {
     const nibbleValue = parseInt(hex[fullNibbles], 16);
     const mask = 0xf << (4 - remainingBits);

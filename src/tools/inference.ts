@@ -26,18 +26,16 @@ export interface InferenceConfig {
   privateKey?: string;
 }
 
+export interface InferenceToolDeps {
+  rpcClient: RpcClient;
+  account: PrivateKeyAccount;
+  config: PlumiseConfig;
+}
+
 export function registerInferenceTools(
   server: McpServer,
-  rpcClient: RpcClient,
-  account: PrivateKeyAccount,
-  config: PlumiseConfig
+  getDeps: () => InferenceToolDeps
 ): void {
-  const inferenceConfig: InferenceConfig = {
-    inferenceApiUrl: config.inferenceApiUrl,
-    rpcUrl: config.nodeUrl,
-    privateKey: config.privateKey,
-  };
-
   // ─── serve_model ──────────────────────────────────────────────
 
   server.tool(
@@ -64,6 +62,12 @@ export function registerInferenceTools(
         ),
     },
     async ({ model, endpoint, capacity }) => {
+      const { account, config } = getDeps();
+      const inferenceConfig: InferenceConfig = {
+        inferenceApiUrl: config.inferenceApiUrl,
+        rpcUrl: config.nodeUrl,
+        privateKey: config.privateKey,
+      };
       return handleServeModel(
         { model, endpoint, capacity },
         inferenceConfig,
@@ -108,6 +112,12 @@ export function registerInferenceTools(
         ),
     },
     async ({ model, prompt, max_tokens, temperature, stream }) => {
+      const { account, config } = getDeps();
+      const inferenceConfig: InferenceConfig = {
+        inferenceApiUrl: config.inferenceApiUrl,
+        rpcUrl: config.nodeUrl,
+        privateKey: config.privateKey,
+      };
       return handleInference(
         { model, prompt, max_tokens, temperature, stream },
         inferenceConfig,
@@ -132,6 +142,12 @@ export function registerInferenceTools(
         ),
     },
     async ({ model }) => {
+      const { config } = getDeps();
+      const inferenceConfig: InferenceConfig = {
+        inferenceApiUrl: config.inferenceApiUrl,
+        rpcUrl: config.nodeUrl,
+        privateKey: config.privateKey,
+      };
       return handleModelStatus({ model }, inferenceConfig);
     }
   );
@@ -157,6 +173,12 @@ export function registerInferenceTools(
         ),
     },
     async ({ action, agent_address }) => {
+      const { account, config } = getDeps();
+      const inferenceConfig: InferenceConfig = {
+        inferenceApiUrl: config.inferenceApiUrl,
+        rpcUrl: config.nodeUrl,
+        privateKey: config.privateKey,
+      };
       return handleAgentRewards(
         { action, agent_address },
         inferenceConfig,
