@@ -3,7 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from './config.js'
-import { initClient, getClient, getAccount } from './client.js'
+import { initClient, getAccountAddress } from './client.js'
 import { registerChainTools } from './tools/chain.js'
 import { registerWalletTools } from './tools/wallet.js'
 import { registerAgentTools } from './tools/agent.js'
@@ -14,7 +14,7 @@ import { registerNetworkResource } from './resources/network.js'
 import { registerWalletResource } from './resources/wallet.js'
 
 const server = new McpServer(
-  { name: 'plumise-mcp', version: '2.0.2' },
+  { name: 'plumise-mcp', version: '2.0.3' },
   { capabilities: { tools: {}, resources: {} } },
 )
 
@@ -25,9 +25,6 @@ function ensureInit() {
   const config = loadConfig()
   if (!config.rpcUrl) {
     throw new Error('PLUMISE_RPC_URL is required — get an API key at https://plug.plumise.com')
-  }
-  if (!config.privateKey) {
-    throw new Error('PLUMISE_PRIVATE_KEY is required')
   }
   initClient(config)
   initialized = true
@@ -92,7 +89,8 @@ server.prompt(
 async function main() {
   // Validate config early
   ensureInit()
-  console.error(`plumise-mcp v2.0.2 started (${config.network}, wallet: ${getAccount().address})`)
+  const addr = getAccountAddress()
+  console.error(`plumise-mcp v2.0.3 started (${config.network}${addr ? `, wallet: ${addr}` : ', read-only'})`)
 
   const transport = new StdioServerTransport()
   await server.connect(transport)

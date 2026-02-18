@@ -11,8 +11,8 @@
 ## 요구사항
 
 - Node.js 18 이상
-- Plumise 지갑 개인키
 - Plug RPC API 키 ([여기서 발급](https://plug.plumise.com))
+- (선택) Plumise 지갑 개인키 — 트랜잭션(전송, 보상 청구, 입금)에 필요
 
 ## 빠른 시작
 
@@ -46,7 +46,7 @@ PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x
 | 변수 | 필수 | 설명 |
 |---|---|---|
 | `PLUMISE_RPC_URL` | 예 | Plug RPC 엔드포인트 ([키 발급](https://plug.plumise.com)) |
-| `PLUMISE_PRIVATE_KEY` | 예 | 지갑 개인키 |
+| `PLUMISE_PRIVATE_KEY` | 아니오 | 지갑 개인키 (트랜잭션 활성화; 없으면 읽기 전용) |
 | `PLUMISE_NETWORK` | 아니오 | `mainnet` 또는 `testnet` (기본값: `mainnet`) |
 | `PLUMISE_INFERENCE_API_URL` | 아니오 | 커스텀 추론 API 엔드포인트 |
 

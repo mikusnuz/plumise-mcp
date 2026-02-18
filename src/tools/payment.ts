@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { parseEther } from 'viem'
 import { getInferencePayment, formatPLM, estimateInferenceCost } from '@plumise/core'
-import { getClient, getAccount } from '../client.js'
+import { getClient, getAccount, getAccountAddress } from '../client.js'
 
 export function registerPaymentTools(server: McpServer) {
   server.tool(
@@ -11,7 +11,10 @@ export function registerPaymentTools(server: McpServer) {
     { address: z.string().optional().describe('User address (default: own wallet)') },
     async ({ address }) => {
       const client = getClient()
-      const target = (address || getAccount().address) as `0x${string}`
+      const target = (address || getAccountAddress()) as `0x${string}`
+      if (!target) {
+        return { content: [{ type: 'text', text: 'Address is required (no wallet configured)' }], isError: true }
+      }
       const payment = getInferencePayment(client.publicClient, client.network)
 
       const credit = await payment.read.getUserCredit([target]) as {

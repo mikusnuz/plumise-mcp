@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { isAddress, parseEther } from 'viem'
 import { formatPLM } from '@plumise/core'
-import { getClient, getAccount } from '../client.js'
+import { getClient, getAccount, getAccountAddress } from '../client.js'
 
 export function registerWalletTools(server: McpServer) {
   server.tool(
@@ -11,7 +11,10 @@ export function registerWalletTools(server: McpServer) {
     { address: z.string().optional().describe('Address to check (default: own wallet)') },
     async ({ address }) => {
       const client = getClient()
-      const target = address || getAccount().address
+      const target = address || getAccountAddress()
+      if (!target) {
+        return { content: [{ type: 'text', text: 'Address is required (no wallet configured)' }], isError: true }
+      }
       if (!isAddress(target)) {
         return { content: [{ type: 'text', text: `Invalid address: ${target}` }], isError: true }
       }
@@ -73,7 +76,10 @@ export function registerWalletTools(server: McpServer) {
     { address: z.string().optional().describe('Address (default: own wallet)') },
     async ({ address }) => {
       const client = getClient()
-      const target = (address || getAccount().address) as `0x${string}`
+      const target = (address || getAccountAddress()) as `0x${string}`
+      if (!target) {
+        return { content: [{ type: 'text', text: 'Address is required (no wallet configured)' }], isError: true }
+      }
       const nonce = await client.publicClient.getTransactionCount({ address: target })
       return {
         content: [{ type: 'text', text: `Address: ${target}\nNonce: ${nonce}` }],

@@ -6,13 +6,15 @@ let _client: PlumiseClient | null = null
 let _account: PrivateKeyAccount | null = null
 
 export function initClient(config: PlumiseConfig) {
-  const key = config.privateKey.startsWith('0x') ? config.privateKey : `0x${config.privateKey}`
-  _account = privateKeyToAccount(key as `0x${string}`)
+  if (config.privateKey) {
+    const key = config.privateKey.startsWith('0x') ? config.privateKey : `0x${config.privateKey}`
+    _account = privateKeyToAccount(key as `0x${string}`)
+  }
 
   _client = createPlumiseClient({
     chain: config.network,
     rpcUrl: config.rpcUrl,
-    account: _account,
+    ...(_account ? { account: _account } : {}),
   })
 }
 
@@ -22,6 +24,10 @@ export function getClient(): PlumiseClient {
 }
 
 export function getAccount(): PrivateKeyAccount {
-  if (!_account) throw new Error('Account not initialized. Call initClient() first.')
+  if (!_account) throw new Error('PLUMISE_PRIVATE_KEY is required for this operation')
   return _account
+}
+
+export function getAccountAddress(): `0x${string}` | null {
+  return _account?.address ?? null
 }

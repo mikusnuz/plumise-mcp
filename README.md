@@ -11,8 +11,8 @@ MCP (Model Context Protocol) server for the [Plumise](https://plumise.com) block
 ## Requirements
 
 - Node.js 18+
-- A Plumise wallet private key
 - A Plug RPC API key ([get one here](https://plug.plumise.com))
+- (Optional) A Plumise wallet private key — needed for transactions (transfer, claim, deposit)
 
 ## Quick Start
 
@@ -46,7 +46,7 @@ PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x
 | Variable | Required | Description |
 |---|---|---|
 | `PLUMISE_RPC_URL` | Yes | Plug RPC endpoint ([get a key](https://plug.plumise.com)) |
-| `PLUMISE_PRIVATE_KEY` | Yes | Wallet private key |
+| `PLUMISE_PRIVATE_KEY` | No | Wallet private key (enables transactions; read-only without it) |
 | `PLUMISE_NETWORK` | No | `mainnet` or `testnet` (default: `mainnet`) |
 | `PLUMISE_INFERENCE_API_URL` | No | Custom inference API endpoint |
 

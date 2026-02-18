@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getRewardPool, formatPLM, addresses } from '@plumise/core'
-import { getClient, getAccount } from '../client.js'
+import { getClient, getAccount, getAccountAddress } from '../client.js'
 
 export function registerRewardTools(server: McpServer) {
   server.tool(
@@ -10,7 +10,10 @@ export function registerRewardTools(server: McpServer) {
     { address: z.string().optional().describe('Agent address (default: own wallet)') },
     async ({ address }) => {
       const client = getClient()
-      const target = (address || getAccount().address) as `0x${string}`
+      const target = (address || getAccountAddress()) as `0x${string}`
+      if (!target) {
+        return { content: [{ type: 'text', text: 'Address is required (no wallet configured)' }], isError: true }
+      }
       const pool = getRewardPool(client.publicClient, client.network)
 
       const pending = await pool.read.getPendingReward([target]) as bigint
@@ -67,7 +70,10 @@ export function registerRewardTools(server: McpServer) {
     },
     async ({ address, limit }) => {
       const client = getClient()
-      const target = (address || getAccount().address) as `0x${string}`
+      const target = (address || getAccountAddress()) as `0x${string}`
+      if (!target) {
+        return { content: [{ type: 'text', text: 'Address is required (no wallet configured)' }], isError: true }
+      }
       const addrs = client.network === 'testnet' ? addresses.testnet : addresses.mainnet
 
       const latest = await client.publicClient.getBlockNumber()
@@ -150,7 +156,10 @@ export function registerRewardTools(server: McpServer) {
     { address: z.string().optional().describe('Agent address (default: own wallet)') },
     async ({ address }) => {
       const client = getClient()
-      const target = (address || getAccount().address) as `0x${string}`
+      const target = (address || getAccountAddress()) as `0x${string}`
+      if (!target) {
+        return { content: [{ type: 'text', text: 'Address is required (no wallet configured)' }], isError: true }
+      }
       const pool = getRewardPool(client.publicClient, client.network)
 
       const contrib = await pool.read.getContribution([target]) as {

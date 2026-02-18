@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { formatPLM } from '@plumise/core'
-import { getClient, getAccount } from '../client.js'
+import { getClient, getAccountAddress } from '../client.js'
 
 export function registerWalletResource(server: McpServer) {
   server.resource(
@@ -8,8 +8,17 @@ export function registerWalletResource(server: McpServer) {
     'plumise://wallet',
     { description: 'Current wallet address and PLM balance' },
     async () => {
+      const address = getAccountAddress()
+      if (!address) {
+        return {
+          contents: [{
+            uri: 'plumise://wallet',
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: 'No wallet configured (PLUMISE_PRIVATE_KEY not set)' }),
+          }],
+        }
+      }
       const client = getClient()
-      const address = getAccount().address
       const balance = await client.publicClient.getBalance({ address })
 
       return {
