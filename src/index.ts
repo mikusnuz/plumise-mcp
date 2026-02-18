@@ -14,7 +14,7 @@ import { registerNetworkResource } from './resources/network.js'
 import { registerWalletResource } from './resources/wallet.js'
 
 const server = new McpServer(
-  { name: 'plumise-mcp', version: '2.0.3' },
+  { name: '@plumise/mcp', version: '2.0.4' },
   { capabilities: { tools: {}, resources: {} } },
 )
 
@@ -90,7 +90,7 @@ async function main() {
   // Validate config early
   ensureInit()
   const addr = getAccountAddress()
-  console.error(`plumise-mcp v2.0.3 started (${config.network}${addr ? `, wallet: ${addr}` : ', read-only'})`)
+  console.error(`@plumise/mcp v2.0.4 started (${config.network}${addr ? `, wallet: ${addr}` : ', read-only'})`)
 
   const transport = new StdioServerTransport()
   await server.connect(transport)

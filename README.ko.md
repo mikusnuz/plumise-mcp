@@ -1,8 +1,8 @@
 [English](README.md) | **한국어**
 
-# plumise-mcp
+# @plumise/mcp
 
-[![npm version](https://img.shields.io/npm/v/plumise-mcp)](https://www.npmjs.com/package/plumise-mcp)
+[![npm version](https://img.shields.io/npm/v/@plumise/mcp)](https://www.npmjs.com/package/@plumise/mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Badge](https://lobehub.com/badge/mcp/mikusnuz-plumise-mcp)](https://lobehub.com/mcp/mikusnuz-plumise-mcp)
 
@@ -25,7 +25,7 @@ Claude Desktop 설정 파일(`~/Library/Application Support/Claude/claude_deskto
   "mcpServers": {
     "plumise": {
       "command": "npx",
-      "args": ["-y", "plumise-mcp"],
+      "args": ["-y", "@plumise/mcp"],
       "env": {
         "PLUMISE_RPC_URL": "https://plug.plumise.com/rpc/YOUR_API_KEY",
         "PLUMISE_PRIVATE_KEY": "0x..."
@@ -38,7 +38,7 @@ Claude Desktop 설정 파일(`~/Library/Application Support/Claude/claude_deskto
 ### 직접 실행
 
 ```bash
-PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x... npx plumise-mcp
+PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x... npx @plumise/mcp
 ```
 
 ## 환경 변수

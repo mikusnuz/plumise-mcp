@@ -1,6 +1,6 @@
 {
-  "name": "plumise-mcp",
-  "version": "2.0.3",
+  "name": "@plumise/mcp",
+  "version": "2.0.4",
   "description": "MCP server for Plumise blockchain — chain queries, wallet, rewards, and AI inference",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

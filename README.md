@@ -1,8 +1,8 @@
 **English** | [한국어](README.ko.md)
 
-# plumise-mcp
+# @plumise/mcp
 
-[![npm version](https://img.shields.io/npm/v/plumise-mcp)](https://www.npmjs.com/package/plumise-mcp)
+[![npm version](https://img.shields.io/npm/v/@plumise/mcp)](https://www.npmjs.com/package/@plumise/mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP Badge](https://lobehub.com/badge/mcp/mikusnuz-plumise-mcp)](https://lobehub.com/mcp/mikusnuz-plumise-mcp)
 
@@ -25,7 +25,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
   "mcpServers": {
     "plumise": {
       "command": "npx",
-      "args": ["-y", "plumise-mcp"],
+      "args": ["-y", "@plumise/mcp"],
       "env": {
         "PLUMISE_RPC_URL": "https://plug.plumise.com/rpc/YOUR_API_KEY",
         "PLUMISE_PRIVATE_KEY": "0x..."
@@ -38,7 +38,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 ### Run directly
 
 ```bash
-PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x... npx plumise-mcp
+PLUMISE_RPC_URL=https://plug.plumise.com/rpc/YOUR_API_KEY PLUMISE_PRIVATE_KEY=0x... npx @plumise/mcp
 ```
 
 ## Environment Variables
